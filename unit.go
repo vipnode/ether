@@ -9,13 +9,14 @@ import (
 type Unit int
 
 const (
+	Unknown    Unit = -1
 	Wei        Unit = 0
-	Kwei            = 3
-	Mwei            = 6
-	Gwei            = 9
-	Microether      = 12
-	Milliether      = 15
-	Ether           = 18
+	Kwei       Unit = 3
+	Mwei       Unit = 6
+	Gwei       Unit = 9
+	Microether Unit = 12
+	Milliether Unit = 15
+	Ether      Unit = 18
 
 	// Aliases
 	Babbage  = Kwei
@@ -24,11 +25,9 @@ const (
 	Szabo    = Microether
 	Finney   = Milliether
 	Eth      = Ether
-
-	Unknown Unit = -1
 )
 
-// Num returns the denomination as a numerator.
+// Num returns the denomination as a numerator in wei.
 func (u Unit) Num() *big.Int {
 	r := big.NewInt(10)
 	return r.Exp(r, big.NewInt(int64(u)), nil)
