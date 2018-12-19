@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-func TestEther(t *testing.T) {
+func TestPrint(t *testing.T) {
 	cases := []struct {
 		Amount *big.Int
 		Want   string
@@ -33,14 +33,14 @@ func TestEther(t *testing.T) {
 	}
 
 	for i, tc := range cases {
-		got := Ether(*tc.Amount).String()
+		got := Print(tc.Amount)
 		if got != tc.Want {
 			t.Errorf("case #%d: got: %q; want %q", i, got, tc.Want)
 		}
 	}
 }
 
-func TestParseEther(t *testing.T) {
+func TestParse(t *testing.T) {
 	cases := []struct {
 		Input   string
 		Want    *big.Int
@@ -93,7 +93,7 @@ func TestParseEther(t *testing.T) {
 	}
 
 	for i, tc := range cases {
-		got, err := ParseEther(tc.Input)
+		got, err := Parse(tc.Input)
 		if tc.IsError && err != nil {
 			continue
 		}

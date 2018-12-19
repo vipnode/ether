@@ -1,7 +1,11 @@
+// Ether package provides parsing and printing across different Ethereum unit
+// denominations.
+//
+// It tries to retain precision by using big.Rat for internal computation, and
+// big.Int for inputs and outputs.
 package ether
 
 import (
-	"fmt"
 	"math/big"
 	"strings"
 	"unicode"
@@ -14,23 +18,21 @@ var boundary = big.NewInt(1e4)
 var gweiBoundary = new(big.Int).Div(ethInGwei, boundary)
 var ethBoundary = new(big.Int).Div(ethInWei, boundary)
 
-// Ether implements a String() formatter that dynamically adjusts to a closer
+// Print converts some value in wei like 123 into a string like "123 wei". It
+// will use gwei or ether if it is within 4 decimals of precision.
 // denomation based on the value.
-type Ether big.Int
-
-func (e Ether) String() string {
-	i := (big.Int)(e)
+func Print(wei *big.Int) string {
 	unit := "wei"
 	denom := big.NewInt(1)
 
-	if i.CmpAbs(ethBoundary) >= 0 {
+	if wei.CmpAbs(ethBoundary) >= 0 {
 		unit = "ether"
 		denom = ethInWei
-	} else if i.CmpAbs(gweiBoundary) >= 0 {
+	} else if wei.CmpAbs(gweiBoundary) >= 0 {
 		unit = "gwei"
 		denom = ethInGwei
 	}
-	s := new(big.Rat).SetFrac(&i, denom).FloatString(4)
+	s := new(big.Rat).SetFrac(wei, denom).FloatString(4)
 	s = strings.TrimRight(s, "0.")
 	if s == "" {
 		s = "0"
@@ -38,8 +40,9 @@ func (e Ether) String() string {
 	return s + " " + unit
 }
 
-// ParseEther takes a string like "2 eth" and converts it to the wei equivalent.
-func ParseEther(s string) (*big.Int, error) {
+// Parse takes a string like "2 eth" and converts it to the wei equivalent.
+func Parse(s string) (*big.Int, error) {
+	// Find numbers like -123.456 and stop after the first non-number-y character.
 	var splitPos int
 	for pos, ch := range s {
 		if !unicode.IsNumber(ch) && ch != '-' && ch != '.' {
@@ -49,39 +52,26 @@ func ParseEther(s string) (*big.Int, error) {
 	}
 
 	if splitPos == 0 {
-		// Must be wei
+		// No unit provided, assume it's wei.
 		if r, ok := new(big.Int).SetString(s, 0); ok {
 			return r, nil
 		}
-		return nil, fmt.Errorf("failed to parse ether value: %q", s)
+		return nil, ErrInvalidValue
 	}
 
 	number, unit := s[:splitPos], s[splitPos:]
 
 	n, ok := new(big.Rat).SetString(number)
 	if !ok {
-		return nil, fmt.Errorf("failed to parse ether value: %q", s)
+		return nil, ErrInvalidValue
 	}
 
 	mul := new(big.Rat)
-	switch strings.ToLower(strings.TrimSpace(unit)) {
-	case "wei":
-	case "kwei", "babbage":
-		mul.SetInt64(1e3)
-	case "mwei", "lovelace":
-		mul.SetInt64(1e6)
-	case "gwei", "shannon":
-		mul.SetInt64(1e9)
-	case "microether", "szabo":
-		mul.SetInt64(1e12)
-	case "milliether", "finney":
-		mul.SetInt64(1e15)
-	case "ether", "eth":
-		mul.SetInt64(1e18)
-	default:
-		return nil, fmt.Errorf("failed to parse ether unit: %q", s)
+	u := ParseUnit(unit)
+	if u == Unknown {
+		return nil, ErrInvalidUnit
 	}
-
+	mul.SetInt(u.Num())
 	n.Mul(n, mul)
 	return new(big.Int).Div(n.Num(), n.Denom()), nil
 }
